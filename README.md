@@ -44,12 +44,15 @@ Where Color is enum name, char is underlying type, and Red, Green, Blue are enum
 
 The list of methods available after "smart_enum" macro usage presented below:
 ```cpp
-static constexpr size_type getItemsCount ()       // returns number of enum elements
-static Enum getItem (size_type _idx)              // returns enum element using index
-const Enum * begin () const                       // returns enum begin iterator
-const Enum * end() const                          // returns enum end iterator
-static string_view_type toString(Enum);           // returns string representation of given element
-static bool fromString(Enum &, string_view_type); // returns true when possible to create enum from str
+static constexpr size_type getEnumElementsCount () // returns number of enum elements
+static size_type getItemsCount ()                  // returns number of active enum items
+static Enum getItem (size_type _idx)               // returns enum element using index
+const_iterator begin () const                      // returns enum begin iterator
+const_iterator end() const                         // returns enum end iterator
+const_reverse_iterator rbegin () const             // returns enum rbegin iterator
+const_reverse_iterator rend() const                // returns enum rend iterator
+static string_view_type toString(Enum);            // returns string representation of given element
+static bool fromString(Enum &, string_view_type);  // returns true when possible to create enum from str
 ```
 
 That methods give user possibility to work with enum strings and iterate over enum elements using for/while/do while and ranged based for loops.
@@ -62,11 +65,20 @@ It may be a situation when enum element becomes deprecated, requires some specif
 ```cpp
 class ComplexEnum enumerate(int, Item0, ItemDeprecated, Item2 = 4, Item3 = 99);
 declare_enum_items(ComplexEnum, Item3, Item2, Item0);
-declare_enum_strings(ComplexEnum, Item3Str, , Item0 String);
+declare_enum_strings(ComplexEnum, Item3Str, , Item0 String); // strings declaration
+// or even better version
+declare_enum_strings_ex(ComplexEnum, "Item3Str", "", "Item0 String"); // better strings declaration
 ```
 
 From mentioned code we create enumerated class ComplexEnum with enum class Enum within it.
 ItemDeprecated element became depracted, so exclude it from declare_enum_items macro, by the way items order is reversed within declare_enum_items which give us possibility to iterate over elements in reverse order excluding ItemDeprecated element. declare_enum_strings is macro that specifies string representation for already ordered elements. If string representation is not needed just keep blanc instead.
+
+In some cases (for example big enums) linear strings comparison may affect application performance. For that case user can manualy implement toString method with switch or hash map implementation inside.
+Signature of strings methods:
+```cpp
+EnumName::string_view_type EnumName::toString(Enum _item);
+bool EnumName::fromString(Enum& _destItem, string_view_type _str);
+```
 
 # How to add to project
 To use smart enums just include EnumUtils.h file to your code project. The utility is header-only.
