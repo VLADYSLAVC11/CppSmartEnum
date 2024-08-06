@@ -57,7 +57,7 @@ That methods give user possibility to work with enum strings and iterate over en
 
 # Extended Smart Enum Usage
 
-It may be a situation when enum element becomes deprecated, requires some specific value, needs reverse order iteration or for example doesn't have string representation. Lets image such an enum using smart enums:
+It may be a situation when enum element becomes deprecated, requires some specific value, needs reverse order iteration or for example doesn't have string representation. Lets imagine such an enum using smart enums:
 
 ```cpp
 class ComplexEnum enumerate(int, Item0, ItemDeprecated, Item2 = 4, Item3 = 99);
