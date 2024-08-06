@@ -4,7 +4,6 @@
 #include <string>
 #include <cstring>
 #include <vector>
-#include <stdexcept>
 
 // These types may be chaged according to user needs
 
@@ -38,42 +37,66 @@ public:
 // Macro to create enumerated class; syntax: class EnumName enumerate( underlying_type, Item0, Item1, ... ItemN )
 #define enumerate(underlying_t, ...) final : public ::EnumUtils::EnumBase { \
 public: \
-    using underlying_type   = underlying_t; \
-    using size_type         = ENUM_SIZE_TYPE; \
-    using string_type       = ENUM_STRING_TYPE; \
-    using string_view_type  = ENUM_STRING_VIEW_TYPE; \
     \
-    enum class Enum : underlying_type {__VA_ARGS__}; \
+    enum class Enum : underlying_t {__VA_ARGS__}; \
     \
-    static constexpr size_type getItemsCount() { \
+    using underlying_type        = underlying_t; \
+    using size_type              = ENUM_SIZE_TYPE; \
+    using string_type            = ENUM_STRING_TYPE; \
+    using string_view_type       = ENUM_STRING_VIEW_TYPE; \
+    using const_iterator         = std::vector<Enum>::const_iterator; \
+    using const_reverse_iterator = std::vector<Enum>::const_reverse_iterator; \
+    \
+    static constexpr size_type getEnumElementsCount() { \
         struct __SizeGetter{underlying_type __VA_ARGS__;}; \
-        return sizeof(__SizeGetter) / sizeof(underlying_type); \
+        return static_cast<size_type>(sizeof(__SizeGetter) / sizeof(underlying_type)); \
+    } \
+    static size_type getItemsCount() { \
+        return static_cast<size_type>(getItems().size()); \
     } \
     static Enum getItem(size_type _idx) { \
-        if(_idx >= getItemsCount()) \
-            throw std::out_of_range("Enum index out of range"); \
-        return *(getItems() + _idx); \
+        return getItems().at(_idx); \
     } \
     \
-    const Enum * begin() const { return getItems(); } \
-    const Enum * end() const { return getItems() + getItemsCount(); } \
+    const_iterator begin() const { return getItems().cbegin(); } \
+    const_iterator end() const { return getItems().cend(); } \
+    const_reverse_iterator rbegin() const { return getItems().crbegin(); } \
+    const_reverse_iterator rend() const { return getItems().crend(); } \
     \
     static string_view_type toString(Enum); \
     static bool fromString(Enum &, string_view_type); \
     \
 private: \
-    static const Enum * getItems(); \
+    static const std::vector<Enum> & getItems(); \
     static string_view_type getItemString(size_type _idx); \
     enum __EnumPrivate : underlying_type {__VA_ARGS__}; \
 }
 
 // Macro to define enumerated class items order during iteration; syntax: declare_enum_items( EnumName, Item0, Item1, ... ItemN )
 #define declare_enum_items(Type, ...) \
-inline const Type::Enum * Type::getItems() { \
-    thread_local const __EnumPrivate Items[] = { \
+inline const std::vector<Type::Enum> & Type::getItems() { \
+    thread_local const std::vector<__EnumPrivate> Items = { \
         __VA_ARGS__ \
     }; \
-    return reinterpret_cast<const Type::Enum *>(Items);\
+    return reinterpret_cast<const std::vector<Enum> &>(Items);\
+}
+
+#define declare_enum_string_linear_methods(Type) \
+inline Type::string_view_type Type::toString(Enum _val) { \
+    for(size_type i = 0; i < getItemsCount(); ++i) { \
+        if(getItem(i) == _val) \
+            return getItemString(i); \
+    } \
+    return string_view_type(); \
+} \
+inline bool Type::fromString(Enum & _dest, string_view_type _valStr) { \
+    for(size_type i = 0; i < getItemsCount(); ++i) { \
+        if(getItemString(i) == _valStr) { \
+            _dest = getItem(i); \
+            return true; \
+        } \
+    } \
+    return false; \
 }
 
 // Macro to define enumerated class items string representation; syntax: declare_enum_strings( EnumName, Item0, Item1, ... ItemN )
@@ -101,25 +124,22 @@ inline Type::string_view_type Type::getItemString(size_type _idx) { \
             } \
         } \
         ItemString.emplace_back(std::move(token)); \
+        ItemString.resize(getItemsCount()); \
     } \
     return ItemString.at(_idx); \
-}\
-inline Type::string_view_type Type::toString(Enum _val) { \
-    for(size_type i = 0; i < getItemsCount(); ++i) { \
-        if(getItem(i) == _val) \
-            return getItemString(i); \
-    } \
-    return string_view_type(); \
 } \
-inline bool Type::fromString(Enum & _dest, string_view_type _valStr) { \
-    for(size_type i = 0; i < getItemsCount(); ++i) { \
-        if(getItemString(i) == _valStr) { \
-            _dest = getItem(i); \
-            return true; \
-        } \
+declare_enum_string_linear_methods(Type)
+
+#define declare_enum_strings_ex(Type, ...) \
+inline Type::string_view_type Type::getItemString(size_type _idx) { \
+    thread_local std::vector<string_type> ItemString; \
+    if(ItemString.empty()) { \
+        ItemString = {__VA_ARGS__}; \
+        ItemString.resize(getItemsCount()); \
     } \
-    return false; \
-}
+    return ItemString.at(_idx); \
+} \
+declare_enum_string_linear_methods(Type)
 
 // Macro to define smart enumerated class; syntax: smart_enum( EnumName, underlying_type, Item0, Item1, ... ItemN )
 // Item values are not alowed when using this macro
